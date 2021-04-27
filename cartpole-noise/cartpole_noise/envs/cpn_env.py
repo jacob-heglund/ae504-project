@@ -106,16 +106,10 @@ class CartPoleNoiseEnv(gym.Env):
         thetaacc = (self.gravity * sintheta - costheta * temp) / (self.length * (4.0 / 3.0 - self.masspole * costheta ** 2 / self.total_mass))
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
 
-        if self.kinematics_integrator == 'euler':
-            x = x + self.tau * x_dot
-            x_dot = x_dot + self.tau * xacc
-            theta = theta + self.tau * theta_dot
-            theta_dot = theta_dot + self.tau * thetaacc
-        else:  # semi-implicit euler
-            x_dot = x_dot + self.tau * xacc
-            x = x + self.tau * x_dot
-            theta_dot = theta_dot + self.tau * thetaacc
-            theta = theta + self.tau * theta_dot
+        x = x + self.tau * x_dot
+        x_dot = x_dot + self.tau * xacc
+        theta = theta + self.tau * theta_dot
+        theta_dot = theta_dot + self.tau * thetaacc
 
         self.state = (x, x_dot, theta, theta_dot)
 

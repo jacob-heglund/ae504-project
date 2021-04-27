@@ -3,6 +3,7 @@ import control
 from lqr import LQR
 
 import gym
+import cartpole_noise
 from gym import wrappers
 from time import time
 
@@ -24,7 +25,8 @@ def main():
     R = np.array([10])
     lqr = LQR(A, B, C, D, Q, R)
 
-    env = gym.make('CartPole-v0')
+    # env = gym.make('CartPole-v0')
+    env = gym.make('cpn-v0')
     env = wrappers.Monitor(env, './videos/' + str(time()) + '/')
     env.env.seed(1)     # seed for reproducibility
     obs = env.reset()
