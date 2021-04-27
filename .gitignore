@@ -17,7 +17,7 @@ lib64/
 parts/
 sdist/
 var/
-vidoes/
+videos/
 wheels/
 pip-wheel-metadata/
 share/python-wheels/
