@@ -9,9 +9,9 @@ import gym
 from gym import spaces, logger
 from gym.utils import seeding
 import numpy as np
+import pdb
 
-
-class CartPoleNoiseEnv(gym.Env):
+class CartPoleCustom(gym.Env):
     """
     Description:
         A pole is attached by an un-actuated joint to a cart, which moves along
@@ -63,11 +63,14 @@ class CartPoleNoiseEnv(gym.Env):
         self.total_mass = (self.masspole + self.masscart)
         self.length = 0.5  # actually half the pole's length
         self.polemass_length = (self.masspole * self.length)
-        self.force_mag = 10.0 * (1 + self.add_noise())
-        self.tau = 0.02  # seconds between state updates        self.kinematics_integrator = 'euler'
+        self.tau = 0.02  # seconds between state updates
+        self.min_action = -10.0
+        self.max_action = 10.0
+
+        self.kinematics_integrator = 'euler'
 
         # Angle at which to fail the episode
-        self.theta_threshold_radians = 12 * 2 * math.pi / 360
+        self.theta_threshold_radians = 1000 # we're doing a swing-up, so don't worry about this
         self.x_threshold = 2.4
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
@@ -78,7 +81,11 @@ class CartPoleNoiseEnv(gym.Env):
                          np.finfo(np.float32).max],
                         dtype=np.float32)
 
-        self.action_space = spaces.Discrete(2)
+        self.action_space = spaces.Box(
+            low=self.min_action,
+            high=self.max_action,
+            shape=(1,)
+        )
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 
         self.seed()
@@ -92,28 +99,46 @@ class CartPoleNoiseEnv(gym.Env):
         return [seed]
 
     def step(self, action):
-        err_msg = "%r (%s) invalid" % (action, type(action))
-        assert self.action_space.contains(action), err_msg
+        # constraints on actions
+        if action < 0:
+            action = max(action, self.min_action)
+        elif action >= 0:
+            action = min(action, self.max_action)
+        action = np.array(action).reshape(1)
+
+        # check action validity
+        assert self.action_space.contains(action), \
+            "%r (%s) invalid" % (action, type(action))
 
         x, x_dot, theta, theta_dot = self.state
-        force = self.force_mag if action == 1 else -self.force_mag
         costheta = math.cos(theta)
         sintheta = math.sin(theta)
+
+        action_noise = np.random.normal(loc=0, scale=self.action_noise_std)
+        obs_noise = np.random.normal(loc=0, scale=self.obs_noise_std)
+
+        force = action + action_noise
 
         # For the interested reader:
         # https://coneural.org/florian/papers/05_cart_pole.pdf
         temp = (force + self.polemass_length * theta_dot ** 2 * sintheta) / self.total_mass
         thetaacc = (self.gravity * sintheta - costheta * temp) / (self.length * (4.0 / 3.0 - self.masspole * costheta ** 2 / self.total_mass))
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
-        noise = self.add_noise()
 
-        x = x + self.tau * x_dot
-        x_dot = x_dot + self.tau * xacc
-        theta = theta + self.tau * theta_dot * (1 + noise)
-        theta_dot = theta_dot + self.tau * thetaacc
+        if self.kinematics_integrator == 'euler':
+            x = x + self.tau * x_dot
+            x_dot = x_dot + self.tau * xacc
+            theta = theta + self.tau * theta_dot
+            theta_dot = theta_dot + self.tau * thetaacc
+        else:  # semi-implicit euler
+            x_dot = x_dot + self.tau * xacc
+            x = x + self.tau * x_dot
+            theta_dot = theta_dot + self.tau * thetaacc
+            theta = theta + self.tau * theta_dot
 
         self.state = (x, x_dot, theta, theta_dot)
 
+        # check if we reach a defined end state
         done = bool(
             x < -self.x_threshold
             or x > self.x_threshold
@@ -138,16 +163,20 @@ class CartPoleNoiseEnv(gym.Env):
             self.steps_beyond_done += 1
             reward = 0.0
 
-        return np.array(self.state), reward, done, {}
+        obs = np.array(self.state) + obs_noise * np.ones_like(np.array(self.state))
 
-    def add_noise(self):
-        # np.random.uniform(low=-0.05, high=0.05)
-        n = np.random.normal(loc=0, scale=np.sqrt(0.10))
-        return n
+        return obs, reward, done, {}
 
-    def reset(self):
-        self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
+    def reset(self, init_state=None, end_state=None, action_noise_std=0.1, obs_noise_std=0.1):
+        if init_state is None:
+            self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
+        else:
+            self.state = init_state
+
         self.steps_beyond_done = None
+        self.action_noise_std = action_noise_std
+        self.obs_noise_std = obs_noise_std
+
         return np.array(self.state)
 
     def render(self, mode='human'):

@@ -9,3 +9,8 @@ register(
     id='cpl-v0',
     entry_point='cartpole_noise.envs:CartPoleLinearEnv',
 )
+
+register(
+    id='cp-custom-v0',
+    entry_point='cartpole_noise.envs:CartPoleCustom',
+)
