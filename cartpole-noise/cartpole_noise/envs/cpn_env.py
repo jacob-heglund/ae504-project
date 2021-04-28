@@ -63,7 +63,7 @@ class CartPoleNoiseEnv(gym.Env):
         self.total_mass = (self.masspole + self.masscart)
         self.length = 0.5  # actually half the pole's length
         self.polemass_length = (self.masspole * self.length)
-        self.force_mag = 10.0
+        self.force_mag = 10.0 * (1 + self.add_noise())
         self.tau = 0.02  # seconds between state updates        self.kinematics_integrator = 'euler'
 
         # Angle at which to fail the episode
@@ -105,10 +105,11 @@ class CartPoleNoiseEnv(gym.Env):
         temp = (force + self.polemass_length * theta_dot ** 2 * sintheta) / self.total_mass
         thetaacc = (self.gravity * sintheta - costheta * temp) / (self.length * (4.0 / 3.0 - self.masspole * costheta ** 2 / self.total_mass))
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
+        noise = self.add_noise()
 
         x = x + self.tau * x_dot
         x_dot = x_dot + self.tau * xacc
-        theta = theta + self.tau * theta_dot
+        theta = theta + self.tau * theta_dot * (1 + noise)
         theta_dot = theta_dot + self.tau * thetaacc
 
         self.state = (x, x_dot, theta, theta_dot)
@@ -139,10 +140,10 @@ class CartPoleNoiseEnv(gym.Env):
 
         return np.array(self.state), reward, done, {}
     
-    def add_noise(self, x):
-        np_random.uniform(low=-0.05, high=0.05)
-        np_random.normal(loc=0, scale=np.sqrt(0.10))
-        return
+    def add_noise(self):
+        # np.random.uniform(low=-0.05, high=0.05)
+        n = np.random.normal(loc=0, scale=np.sqrt(0.10))
+        return n
 
     def reset(self):
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
