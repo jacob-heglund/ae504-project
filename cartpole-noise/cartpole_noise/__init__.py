@@ -14,3 +14,8 @@ register(
     id='cp-custom-v0',
     entry_point='cartpole_noise.envs:CartPoleCustom',
 )
+
+register(
+    id='cp-cont-v0',
+    entry_point='cartpole_noise.envs:CartPoleCont',
+)
