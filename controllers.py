@@ -8,7 +8,7 @@ def mpc_control(x0, Q, R, sys_params):
     #TODO don't hard-define these here
     nx = 4 # number of states
     nu = 1 # number of inputs
-    T = 5 # time horizon
+    T = 10 # time horizon
     delta_t = 0.1 # time step
 
     x = cvxpy.Variable((nx, T + 1))
@@ -43,7 +43,7 @@ def mpc_control(x0, Q, R, sys_params):
         dtheta = get_nparray_from_matrix(x.value[3, :])
 
         ou = get_nparray_from_matrix(u.value[0, :])
-    return 1*ou[1]
+    return ou[1]
 
 
 def get_model_matrix(nx, delta_t, sys_params):

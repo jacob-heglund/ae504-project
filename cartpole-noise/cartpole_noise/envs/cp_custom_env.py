@@ -139,12 +139,16 @@ class CartPoleCustom(gym.Env):
         self.state = (x, x_dot, theta, theta_dot)
 
         # check if we reach a defined end state
+        end_state_reached = np.allclose(np.array(self.state), self.end_state, atol=0.001, rtol=0.001)
+
         done = bool(
             x < -self.x_threshold
             or x > self.x_threshold
             or theta < -self.theta_threshold_radians
             or theta > self.theta_threshold_radians
+            or end_state_reached
         )
+
 
         if not done:
             reward = 1.0
@@ -173,6 +177,7 @@ class CartPoleCustom(gym.Env):
         else:
             self.state = init_state
 
+        self.end_state = end_state
         self.steps_beyond_done = None
         self.action_noise_std = action_noise_std
         self.obs_noise_std = obs_noise_std
