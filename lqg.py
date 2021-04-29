@@ -11,10 +11,6 @@ class LQG():
         K, S, E = lqr(sys, Q, R)
         self.K = K
 
-        #kalman filter gains
-        #L, P, E = lqe(A, np.eye(4), C, Vd, Vn)
-        #self.Kf = L
-
     def kalman_gain(self, A, obs, C, Vd):
         x_hat_minus = A @ self.x_hat
         P_minus = A @ self.P @ A.T
@@ -28,7 +24,7 @@ class LQG():
         return K
 
     def add_noise(self):
-        noise = np.random.normal(loc=0, scale=np.sqrt(0.10))
+        noise = np.random.normal(loc=0, scale=(0.10))
         noise = np.ones((1,4)) * noise
         return noise
 
@@ -43,3 +39,4 @@ class LQG():
             return 1, u
         else:
             return 0, u
+
