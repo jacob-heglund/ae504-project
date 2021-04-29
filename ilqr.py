@@ -2,9 +2,10 @@ import numpy as np
 import gym
 import cartpole_noise
 from gym import wrappers
+from time import time
 
 class iLQR():
-    def __init__(self, Q, R, Q_terminal, x_goal):
+    def __init__(self, Q, R, Q_terminal, x_goal, N):
         self.J_hist = []
         self.cost = QRCost(Q, R, Q_terminal=Q_terminal, x_goal=x_goal)
         self._mu = 1.0
@@ -44,6 +45,7 @@ class iLQR():
     
     def fit(self, env, x0, us_init, n_iterations, tol=1e-6):
         self.dynamics = env
+        x0 = self.augment_state(x0)
         # Reset regularization term.
         self._mu = 1.0
         self._delta = self._delta_0
@@ -58,6 +60,7 @@ class iLQR():
         changed = True
         converged = False
         for iteration in range(n_iterations):
+            self.dynamics.render()
             accepted = False
 
             # Forward rollout only if it needs to be recomputed.
@@ -170,10 +173,11 @@ class iLQR():
             x = xs[i]
             u = us[i]
 
-            env.reset(self.reduce_state(x))
-            xs[i + 1] = self.dynamics.step(u[..., 0])
-            F_x[i] = self.dynamics.f_x(x, u, i)
-            F_u[i] = self.dynamics.f_u(x, u, i)
+            #self.dynamics.reset(init_state=self.reduce_state(x))
+            next_state, _, _, _ = self.dynamics.step(u[..., 0])
+            xs[i + 1] = self.augment_state(next_state.T)
+            F_x[i] = self.f_x(x, u)
+            F_u[i] = self.f_u(x, u)
 
             L[i] = self.cost.l(x, u, i, terminal=False)
             L_x[i] = self.cost.l_x(x, u, i, terminal=False)
@@ -189,6 +193,37 @@ class iLQR():
 
         return xs, F_x, F_u, L, L_x, L_u, L_xx, L_ux, L_uu, F_xx, F_ux, F_uu
 
+    def f_x(self, x, u):
+        A = np.zeros((5, 5))
+        eps = 1e-4 # finite differences epsilon
+        for i in range(5):
+            # calculate partial differential w.r.t. x
+            inc_x = x.copy()
+            inc_x[i] += eps
+            #self.dynamics.reset(init_state=self.reduce_state(inc_x))
+            state_inc, _, _, _ = self.dynamics.step(u.copy())
+            dec_x = x.copy()
+            dec_x[i] -= eps
+            #self.dynamics.reset(init_state=self.reduce_state(dec_x))
+            state_dec, _, _, _ = self.dynamics.step(u.copy())
+            A[:, i] = (self.augment_state(state_inc.T) - self.augment_state(state_dec.T)) / (2 * eps)
+        return A
+    
+    def f_u(self, x, u):
+        B = np.zeros((5, 1))
+        eps = 1e-4 # finite differences epsilon
+        # calculate partial differential w.r.t. u
+        inc_u = u.copy()
+        inc_u[0] += eps
+        #self.dynamics.reset(init_state=self.reduce_state(x.copy()))
+        state_inc, _, _, _ = self.dynamics.step(inc_u)
+        dec_u = u.copy()
+        dec_u[0] -= eps
+        #self.dynamics.reset(init_state=self.reduce_state(x.copy()))
+        state_dec, _, _, _ = self.dynamics.step(dec_u)
+        B[:, 0] = (self.augment_state(state_inc.T) - self.augment_state(state_dec.T)) / (2 * eps)
+        return B
+    
     def _backward_pass(self, F_x, F_u, L_x, L_u, L_xx, L_ux, L_uu, F_xx=None, F_ux=None, F_uu=None):
         V_x = L_x[-1]
         V_xx = L_xx[-1]
@@ -229,7 +264,7 @@ class iLQR():
 
         return Q_x, Q_u, Q_xx, Q_ux, Q_uu
 
-class QRCost(Cost):
+class QRCost():
     """Quadratic Regulator Instantaneous Cost."""
     def __init__(self, Q, R, Q_terminal=None, x_goal=None, u_goal=None):
         self.Q = np.array(Q)
@@ -309,7 +344,7 @@ def main():
     R = np.array([[0.1]])
     x_goal = np.array([0.0, 0.0, 0.0, 1.0, 0.0])
     N = 500
-    ilqr = iLQR(Q, R, Q_terminal, x_goal)
+    ilqr = iLQR(Q, R, Q_terminal, x_goal, N)
 
     env = gym.make('cp-cont-v0')
 
