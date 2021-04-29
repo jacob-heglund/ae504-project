@@ -1,5 +1,6 @@
 import numpy as np
-from time import time
+from datetime import datetime
+from pathlib import Path
 import gym
 import cartpole_noise
 from gym.wrappers.monitoring import video_recorder
@@ -9,15 +10,17 @@ import pdb
 from controllers import mpc_control
 
 
-def main(init_state, end_state, Q, R, sys_params, render=True):
+def main(init_state, end_state, Q, R, sys_params, curr_time_str, results_dir,render=False):
     """Renders MPC-controlled actions on a cartpole system
 
     Args:
     """
     # initialize environment
+
     env = gym.make('cp-custom-v0')
-    video_path = './videos/' + str(time()).replace(".", "") + '.mp4'
-    vid = video_recorder.VideoRecorder(env, path=video_path)
+    if render:
+        video_path = results_dir + '/vid.mp4'
+        vid = video_recorder.VideoRecorder(env, path=video_path)
     env.seed(1) # seed for reproducibility
 
     obs = env.reset(init_state=init_state,
@@ -27,13 +30,13 @@ def main(init_state, end_state, Q, R, sys_params, render=True):
                     )
 
     n_states = obs.shape[0]
+    x_OUT = np.zeros((n_states, 1))
+    u_OUT = np.zeros((1))
     done = False
+    step_count = 0
+    max_steps = 1000
 
-    n_steps = 1000
-    x_OUT = np.zeros((n_steps, 4))
-    u_OUT = np.zeros((n_steps))
-
-    for i in range(n_steps):
+    while True:
         if render:
             env.render()
             vid.capture_frame()
@@ -42,22 +45,31 @@ def main(init_state, end_state, Q, R, sys_params, render=True):
         #TODO figure out where this negative is coming from (I need it for anything to work)
         action = -5*mpc_control(obs, Q, R, sys_params)
 
-        # if i % 10 == 0:
-        #     print(action)
+        if step_count % 100 == 0:
+            print(step_count)
 
         # apply action
         obs, reward, done, _ = env.step(action)
-        x_OUT[i, :] = obs.squeeze()
-        u_OUT[i] = action
+        x_OUT = np.append(x_OUT, obs, axis=1)
+        u_OUT = np.append(u_OUT, action)
+        step_count += 1
 
-        if done:
-            print(f'Terminated after {i+1} iterations \n Final State: {obs}\n Target State: {xf}')
+        if (done) or (step_count >= max_steps):
+            print(f'Terminated after {step_count+1} iterations \n Final State: {obs}\n Target State: {xf}')
             break
 
-    return x_OUT, u_OUT
+    env.close()
+    return x_OUT[:, 1:], u_OUT[1:]
 
 
 if __name__ == '__main__':
+    now = datetime.now()
+    curr_time_str = now.strftime("%H-%M-%S--%m-%d-%Y")
+    # curr_time_str = str(time()).replace(".", "")
+    render = True
+    results_dir = "./results/" + curr_time_str + "/"
+    Path(results_dir).mkdir(parents=True, exist_ok=True)
+
     # define system parameters
     mass_cart = 1.0  # [kg]
     mass_bar = 0.3  # [kg]
@@ -68,17 +80,14 @@ if __name__ == '__main__':
     sys_params = (mass_cart, mass_bar, length_bar, gravity, action_noise_std, obs_noise_std)
 
     # define initial and end states
-    # state consists of x, x_dot, theta, theta_dot
-    # theta = 0 is when the bar is vertical
-    x0 = np.array([0.5, 0, -0.1, 0]).reshape(-1, 1)
+    x0 = np.array([0.5, 0, -0.2, 0]).reshape(-1, 1)
     xf = np.array([0, 0, 0, 0]).reshape(-1, 1)
 
     # define reward
-    Q = np.diag([1.0, 1.0, 10.0, 10.0])
+    Q = np.diag([100.0, 1.0, 10.0, 10.0])
     R = np.diag([1])
 
-    x_OUT, u_OUT = main(x0, xf, Q, R, sys_params)
-    np.save("x_OUT.npy", x_OUT)
-    np.save("u_OUT.npy", u_OUT)
-
+    x_OUT, u_OUT = main(x0, xf, Q, R, sys_params, curr_time_str, results_dir, render=render)
+    np.save(results_dir + "x_OUT.npy", x_OUT)
+    np.save(results_dir + "u_OUT.npy", u_OUT)
 
