@@ -64,14 +64,14 @@ class CartPoleCustom(gym.Env):
         self.length = 0.5
         self.polemass_length = (self.masspole * self.length)
         self.tau = 0.02  # seconds between state updates
-        self.min_action = -100.0
-        self.max_action = 100.0
+        self.min_action = -1000.0
+        self.max_action = 1000.0
 
         self.kinematics_integrator = 'euler'
 
         # Angle at which to fail the episode
         self.theta_threshold_radians = 1000 # we're doing a swing-up, so don't worry about this
-        self.x_threshold = 2.4
+        self.x_threshold = 5
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation
         # is still within bounds.
@@ -99,11 +99,11 @@ class CartPoleCustom(gym.Env):
         return [seed]
 
     def step(self, action):
-        # # constraints on actions
-        # if action < 0:
-        #     action = max(action, self.min_action)
-        # elif action >= 0:
-        #     action = min(action, self.max_action)
+        # constraints on actions
+        if action < 0:
+            action = max(action, self.min_action)
+        elif action >= 0:
+            action = min(action, self.max_action)
         action = np.array(action).reshape(1)
 
         # check action validity
@@ -139,7 +139,7 @@ class CartPoleCustom(gym.Env):
         self.state = (x, x_dot, theta, theta_dot)
 
         # check if we reach a defined end state
-        end_state_reached = np.allclose(np.array(self.state), self.end_state, atol=0.001, rtol=0.001)
+        end_state_reached = np.allclose(np.array(self.state), self.end_state, atol=0.01, rtol=0.01)
 
         done = bool(
             x < -self.x_threshold
