@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import pdb
 
 from controllers import mpc_control, energy_shaping_control, get_model_matrix_mpc, get_model_matrix_lqr, standardize_angle
-
+from plotting import state_and_input_vs_time
 
 def main(init_state, end_state, Q, R, sys_params, curr_time_str, results_dir,render=False):
     """Renders MPC-controlled actions on a cartpole system
@@ -94,7 +94,8 @@ if __name__ == '__main__':
     render = True
 
     x_OUT, u_OUT = main(x0, xf, Q, R, sys_params, curr_time_str, results_dir, render=render)
-
+    pdb.set_trace()
+    state_and_input_vs_time(x_OUT, u_OUT, save_loc=f"{results_dir}/state_and_input_vs_time.png")
     np.save(results_dir + "x_OUT.npy", x_OUT)
     np.save(results_dir + "u_OUT.npy", u_OUT)
     np.savetxt(results_dir + "Q.txt", Q)
