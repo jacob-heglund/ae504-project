@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pdb
 
-datetime_load = "09-40-26--04-29-2021"
+datetime_load = "16-52-24--05-05-2021"
+datetime_load = "17-01-41--05-05-2021"
 load_dir = f"./results/{datetime_load}/"
 
 x_OUT = np.load(load_dir + "x_OUT.npy")
@@ -16,12 +17,12 @@ def state_and_input_vs_time(x_OUT, u_OUT):
     ax.plot(x_OUT[1, :], label="x_dot")
     ax.plot(x_OUT[2, :], label="theta")
     ax.plot(x_OUT[3, :], label="theta_dot")
-    ax.legend()
+    ax.legend(loc="lower right")
 
     ax = axs[1]
     ax.plot(u_OUT, label="input")
     ax.legend()
 
-    fig.savefig(load_dir + "state_and_input_vs_time.png", )
+    fig.savefig(load_dir + "state_and_input_vs_time.png")
 
-plotting(x_OUT, u_OUT)
+state_and_input_vs_time(x_OUT, u_OUT)

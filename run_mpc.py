@@ -7,7 +7,7 @@ from gym.wrappers.monitoring import video_recorder
 import matplotlib.pyplot as plt
 import pdb
 
-from controllers import mpc_control
+from controllers import mpc_control, energy_shaping_control, get_model_matrix_mpc, get_model_matrix_lqr, standardize_angle
 
 
 def main(init_state, end_state, Q, R, sys_params, curr_time_str, results_dir,render=False):
@@ -41,9 +41,12 @@ def main(init_state, end_state, Q, R, sys_params, curr_time_str, results_dir,ren
             env.render()
             vid.capture_frame()
 
-        #TODO figure out where in the cost function I can include magic gains to actually make it work nicely (you need a scaling like this for the inputs to be anywhere close to adequate)
-        #TODO figure out where this negative is coming from (I need it for anything to work)
-        action = -5*mpc_control(obs, Q, R, sys_params)
+        # check if bar is near the top "stable" region
+        theta_std = standardize_angle(obs[2])
+        if (-0.5 < theta_std < 0.5):
+            action = mpc_control(obs, Q, R, sys_params)
+        else:
+            action = energy_shaping_control(obs, sys_params)
 
         if step_count % 100 == 0:
             print(step_count)
@@ -66,7 +69,6 @@ if __name__ == '__main__':
     now = datetime.now()
     curr_time_str = now.strftime("%H-%M-%S--%m-%d-%Y")
     # curr_time_str = str(time()).replace(".", "")
-    render = True
     results_dir = "./results/" + curr_time_str + "/"
     Path(results_dir).mkdir(parents=True, exist_ok=True)
 
@@ -80,14 +82,22 @@ if __name__ == '__main__':
     sys_params = (mass_cart, mass_bar, length_bar, gravity, action_noise_std, obs_noise_std)
 
     # define initial and end states
-    x0 = np.array([0.5, 0, -0.2, 0]).reshape(-1, 1)
-    xf = np.array([0, 0, 0, 0]).reshape(-1, 1)
+    # x0 = np.array([2, -0.0, -0.959931, 0.0]).reshape(-1, 1)
+    # xf = np.array([0, 0, 0, 0]).reshape(-1, 1)
+
+    x0 = np.array([0.0, 0.0, np.pi, -0.1]).reshape(-1, 1)
+    xf = np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1, 1)
 
     # define reward
     Q = np.diag([100.0, 1.0, 10.0, 10.0])
     R = np.diag([1])
+    render = True
 
     x_OUT, u_OUT = main(x0, xf, Q, R, sys_params, curr_time_str, results_dir, render=render)
+
     np.save(results_dir + "x_OUT.npy", x_OUT)
     np.save(results_dir + "u_OUT.npy", u_OUT)
-
+    np.savetxt(results_dir + "Q.txt", Q)
+    np.savetxt(results_dir + "R.txt", R)
+    np.savetxt(results_dir + "x0.txt", x0)
+    np.savetxt(results_dir + "xf.txt", xf)
