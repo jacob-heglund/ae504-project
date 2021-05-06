@@ -9,15 +9,22 @@ from time import time
 import matplotlib
 import matplotlib.pyplot as plt
 import pdb
-# matplotlib.use("macOSX")
+matplotlib.use("macOSX")
 
-def plotting(x):
-    plt.plot(x[0, :], label="x")
-    plt.plot(x[1, :], label="x_dot")
-    plt.plot(x[2, :], label="theta")
-    plt.plot(x[3, :], label="theta_dot")
-    plt.legend()
-    plt.show()
+def plotting(x, u):
+    fig, axs = plt.subplots(nrows=2, figsize=(8, 5), dpi=100)
+    ax = axs[0]
+    ax.plot(x[0, :], label="x")
+    ax.plot(x[1, :], label="x_dot")
+    ax.plot(x[2, :], label="theta")
+    ax.plot(x[3, :], label="theta_dot")
+    ax.legend(loc='lower right')
+
+    ax = axs[1]
+    ax.plot(u, label="input")
+    ax.legend()
+
+    fig.savefig("state_and_input_vs_time.png")
 
 def main(init_state, end_state, Q, R, sys_parms, render=False):
     # state matrix
@@ -50,12 +57,13 @@ def main(init_state, end_state, Q, R, sys_parms, render=False):
                     )
 
     states = []
-
+    forces = []
     for i in range(1000):
         env.render()
 
         # get force direction (action) and force value (force)
         action, force = lqr.apply_state_controller(lqr.K, obs)
+        forces.append(force)
 
         # apply action
         obs, reward, done, _ = env.step(force)
@@ -63,8 +71,9 @@ def main(init_state, end_state, Q, R, sys_parms, render=False):
         if done:
             print(f'Terminated after {i+1} iterations.')
             break
-    states = np.array(states)
-    # plotting(states)
+    states = np.array(states).T
+    forces = np.array(forces)
+    plotting(states, forces)
     env.close()
 
 if __name__ == '__main__':
