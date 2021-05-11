@@ -44,17 +44,21 @@ def main():
     R = np.array([10])
 
     #covariance matrices for disturbance and noise
-    Vd = .001*np.eye(4);
-    Vn = .000;
+    action_noise_std = 0.1
+    obs_noise_std = 0.05
+    Vd = action_noise_std*np.eye(4)
+    Vn = obs_noise_std
 
     #build lqg regulator
     lqg = LQG(A, B, C, D, Q, R, Vd, Vn)
 
     env = gym.make('cp-custom-v0')
-    vid = video_recorder.VideoRecorder(env, './videos/' + str(time.time()) + '.mp4')
+    # vid = video_recorder.VideoRecorder(env, './videos/' + str(time.time()) + '.mp4')
     env.seed(1)  # seed for reproducibility
-    obs = env.reset(init_state=np.array([0.0, 0.0, 0.2, 0.0]).reshape(-1, 1),
-                    end_state=np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1, 1))
+    obs = env.reset(init_state=np.array([0.0, 0.0, 0.5, 0.0]).reshape(-1, 1),
+                    end_state=np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1, 1),
+                    action_noise_std=action_noise_std,
+                    obs_noise_std=obs_noise_std)
 
     x = []
     x_dot = []
@@ -65,7 +69,7 @@ def main():
     for i in range(1000):
         #time.sleep(.1)
         env.render()
-        vid.capture_frame()
+        # vid.capture_frame()
 
         noise = lqg.add_noise()
 
