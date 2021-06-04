@@ -87,8 +87,10 @@ def get_model_matrix_lqr():
     # input matrix
     # B = np.array([[0], [0.9755], [0], [1.46]])
     B = np.array([[0], [0.9091], [0], [-0.8049]])
+    C = np.eye(4)
+    D = np.zeros((4, 1))
 
-    return A, B
+    return A, B, C, D
 
 
 def energy_shaping_control(state, sys_params):

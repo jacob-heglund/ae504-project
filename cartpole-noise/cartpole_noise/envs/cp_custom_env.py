@@ -139,7 +139,7 @@ class CartPoleCustom(gym.Env):
         self.state = (x, x_dot, theta, theta_dot)
 
         # check if we reach a defined end state
-        end_state_reached = np.allclose(np.array(self.state), self.end_state, atol=0.01, rtol=0.01)
+        end_state_reached = np.allclose(np.array(self.state), self.end_state, atol=0.001, rtol=0.001)
 
         done = bool(
             x < -self.x_threshold
@@ -148,7 +148,6 @@ class CartPoleCustom(gym.Env):
             or theta > self.theta_threshold_radians
             or end_state_reached
         )
-
 
         if not done:
             reward = 1.0
@@ -169,7 +168,8 @@ class CartPoleCustom(gym.Env):
 
         obs = np.array(self.state) + obs_noise * np.ones_like(np.array(self.state))
 
-        return obs, reward, done, {}
+        return obs, reward, done, end_state_reached, {}
+        # return obs, reward, done, {}
 
     def reset(self, init_state=None, end_state=None, action_noise_std=0.1, obs_noise_std=0.1):
         if init_state is None:
